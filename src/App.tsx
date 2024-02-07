@@ -11,20 +11,44 @@ interface Item {
   id: number;
 }
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
-// const itemsList = ["Passports", "Socks"];
 function App() {
   const [itemsList, setItemsList] = useState<Item[]>([]);
+
+  function handleItem(item: Item) {
+    const updatedList = [...itemsList, item];
+    console.log(updatedList);
+    setItemsList(updatedList);
+  }
+
+  function handleDelete(id: number) {
+    const filteredItems = itemsList.filter((item: Item) => item.id !== id);
+    setItemsList(filteredItems);
+  }
+
+  function handleToggleItem(id: number) {
+    const updatedList: Item[] = itemsList.map((item: Item) => {
+      if (item.id === id) {
+        return { ...item, isCarried: !item.isCarried };
+      }
+      return item;
+    });
+    setItemsList(updatedList);
+  }
 
   return (
     <div className="flex flex-col h-screen">
       <Navbar />
-      <AddItemToList itemsList={itemsList} setItemsList={setItemsList} />
-      <ItemsRenderer itemsList={itemsList} setItemsList={setItemsList} />
+      <AddItemToList onAddItem={handleItem} />
+      <PackingList
+        onDeleteItem={handleDelete}
+        onToggleItem={handleToggleItem}
+        itemsList={itemsList}
+      />
       <ItemsOrder itemsList={itemsList} setItemsList={setItemsList} />
-      <PackedItemsInfo />
+      <PackedItemsInfo itemsList={itemsList} />
     </div>
   );
 }
@@ -33,17 +57,18 @@ export default App;
 
 function Navbar() {
   return (
-    <div className="bg-amber-500 flex items-center justify-center min-h-24 w-full">
-      <h1 className="text-2xl">FAR AWAY</h1>
+    <div className="bg-amber-500 flex flex-1 items-center justify-center min-h-24 w-full">
+      <h1 className="text-2xl">😎 FAR AWAY 🎈</h1>
     </div>
   );
 }
 
-function AddItemToList(props: any) {
+function AddItemToList({ onAddItem }: any) {
   const [numberOfItems, setNumberOfItems] = useState("1");
   const [description, setDescription] = useState("");
 
-  function handleAddTodo() {
+  function handleAddTodo(e: any) {
+    e.preventDefault();
     console.log(numberOfItems);
     console.log(description);
     if (!description) {
@@ -56,16 +81,14 @@ function AddItemToList(props: any) {
       id: Date.now(),
     };
 
-    const updatedList = [...props.itemsList, newItem];
-    console.log(updatedList);
-    props.setItemsList(updatedList);
+    onAddItem(newItem);
     setNumberOfItems("1");
     setDescription("");
   }
   return (
-    <div className="flex bg-orange-600 min-h-16 items-center justify-center gap-2 w-full">
+    <div className="flex flex-1 relative bg-orange-600 min-h-16 items-center justify-center gap-2 w-full">
       <p>what do u need for your 😍trip?</p>
-      <div className=" flex gap-3">
+      <form className=" flex gap-3" onSubmit={handleAddTodo}>
         {/* <input type="number" className="rounded-xl w-16 p-1" /> */}
         <select
           typeof="number"
@@ -87,108 +110,91 @@ function AddItemToList(props: any) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <button
-          className="rounded-xl bg-blue-500 w-16 text-white hover:bg-blue-800"
-          onClick={handleAddTodo}
-        >
+        <button className="rounded-xl bg-blue-500 w-16 text-white hover:bg-blue-800">
           ADD
         </button>
-      </div>
+      </form>
     </div>
   );
 }
 
-function ItemsRenderer(props: any) {
-  function handleCheckChange(item: Item, idx: number, e: any) {
-    console.log(e, "=============checkvalue");
-    const value = item.isCarried ? false : true;
-    const updatedItem: Item = { ...item, isCarried: value };
-    const updatedList: Item[] = [
-      ...props.itemsList.slice(0, idx),
-      updatedItem,
-      ...props.itemsList.slice(idx + 1),
-    ];
-    console.log(updatedList);
-    props.setItemsList(updatedList);
-  }
-
-  function handleDelete(item: Item) {
-    const filteredItems = props.itemsList.filter(
-      (it: Item) => it.id !== item.id
-    );
-
-    props.setItemsList(filteredItems);
-  }
+function PackingList({ onToggleItem, onDeleteItem, itemsList }: any) {
   return (
-    <div className="bg-amber-900 flex h-80 justify-center">
-      <ul className="flex w-3/4 pt-8 flex-wrap	">
-        {props.itemsList.map((item: Item, idx: number) => (
-          <li className="text-white flex mx-6 h-10 justify-center items-center gap-2">
-            <input
-              type="checkbox"
-              name=""
-              id=""
-              checked={item.isCarried}
-              onChange={(e) => handleCheckChange(item, idx, e)}
-              className="accent-amber-500 text-white"
-            />
-            <p className={`${item.isCarried ? "line-through" : ""}`}>
-              <span>{item.total} </span>
-              {item.description}
-            </p>
-            <span className="cursor-pointer" onClick={() => handleDelete(item)}>
-              ❌
-            </span>
-          </li>
+    <div className="bg-amber-900 flex flex-2 relative h-80 justify-center">
+      <ul className="flex w-3/4 pt-8 flex-wrap">
+        {itemsList.map((item: Item) => (
+          <Item
+            onDeleteItem={onDeleteItem}
+            onToggleItem={onToggleItem}
+            item={item}
+          />
         ))}
       </ul>
     </div>
   );
 }
 
-function ItemsOrder({ itemsList, setItemsList }: any) {
-  function handleItemsOrder(e: any) {
-    let option = e.target.value;
-    let itemsListCopy = [...itemsList];
-    if (option === "SORT BY INPUT") {
-      itemsListCopy.sort((a: any, b: any) => a.id - b.id);
-      setItemsList(itemsListCopy);
-    }
-    if (option === "SORT BY DESCRIPTION") {
-      itemsListCopy.sort((a: any, b: any) => {
-        if (a.description < b.description) {
-          return -1;
-        }
-        if (a.description > b.description) {
-          return 1;
-        }
-        return 0;
-      });
-      console.log(itemsListCopy);
-      setItemsList(itemsListCopy);
-    }
-    if (option === "SORT BY PACKED STATUS") {
-      // const order = { true: 0, false: 1 }; // Assigning numerical values to each boolean key
-
-      itemsListCopy.sort((a: any, b: any) => a.isCarried - b.isCarried);
-      console.log(itemsListCopy);
-      setItemsList(itemsListCopy);
-    }
-  }
+function Item({ item, onToggleItem, onDeleteItem }: any) {
   return (
-    <div className="flex items-center justify-center  bg-amber-950 w-full h-20 gap-3">
+    <li className="text-white flex mx-6 h-10 justify-center items-center gap-2">
+      <input
+        type="checkbox"
+        name=""
+        id=""
+        checked={item.isCarried}
+        onChange={() => onToggleItem(item.id)}
+        className="accent-amber-500 text-white"
+      />
+      <p className={`${item.isCarried ? "line-through" : ""}`}>
+        <span>{item.total} </span>
+        {item.description}
+      </p>
+      <span className="cursor-pointer" onClick={() => onDeleteItem(item.id)}>
+        ❌
+      </span>
+    </li>
+  );
+}
+
+function ItemsOrder({ itemsList, setItemsList }: any) {
+  const [sortBy, setSortBy] = useState("input");
+  console.log(sortBy);
+
+  useEffect(() => {
+    let sortedList: any;
+    if (sortBy === "input") {
+      sortedList = itemsList.slice().sort((a: any, b: any) => a.id - b.id);
+    }
+    if (sortBy === "description") {
+      sortedList = itemsList
+        .slice()
+        .sort((a: any, b: any) => a.description.localeCompare(b.description));
+    }
+    if (sortBy === "packed") {
+      // const order = { true: 0, false: 1 };
+      sortedList = itemsList
+        .slice()
+        .sort((a: any, b: any) => Number(a.isCarried) - Number(b.isCarried));
+    }
+    setItemsList(sortedList);
+  }, [sortBy]);
+  // }
+
+  return (
+    <div className="flex flex-1 relative items-center justify-center  bg-amber-950 w-full h-28 gap-3">
       <select
         name=""
         id=""
-        className="w-fit rounded-2xl p-1 bg-amber-200"
-        onChange={handleItemsOrder}
+        value={sortBy}
+        className="w-fit rounded-2xl p-2 bg-amber-200"
+        onChange={(e) => setSortBy(e.target.value)}
       >
-        <option value="SORT BY INPUT">SORT BY INPUT ORDER</option>
-        <option value="SORT BY DESCRIPTION">SORT BY DESCRIPTION</option>
-        <option value="SORT BY PACKED STATUS">SORT BY PACKED STATUS</option>
+        <option value="input">SORT BY INPUT ORDER</option>
+        <option value="description">SORT BY DESCRIPTION</option>
+        <option value="packed">SORT BY PACKED STATUS</option>
       </select>
       <button
-        className="rounded-xl w-fit p-1  bg-amber-200 "
+        className="rounded-xl w-fit p-2  bg-amber-200 "
         onClick={() => setItemsList([])}
       >
         CLEAR LIST
@@ -197,10 +203,27 @@ function ItemsOrder({ itemsList, setItemsList }: any) {
   );
 }
 
-function PackedItemsInfo() {
+function PackedItemsInfo({ itemsList }: any) {
+  const totalItems = itemsList.length;
+  if (!totalItems) {
+    return (
+      <div className="flex bg-emerald-400 flex-1 items-center justify-center relative bottom-0 w-full ">
+        There are no Items selected yet 😅😅
+      </div>
+    );
+  }
+  const packed = itemsList.filter((item: any) => item.isCarried).length;
+  const percent = Math.round((packed / totalItems) * 100);
   return (
-    <div className="flex bg-emerald-400 flex-1 items-center justify-center relative bottom-0 w-full ">
-      <p>You have X items on your list, and you already packed X (X%)</p>
-    </div>
+    <footer className="flex bg-emerald-400 flex-1 items-center justify-center relative bottom-0 w-full ">
+      {percent == 100 ? (
+        <p>All the items have been Packed 😍</p>
+      ) : (
+        <p>
+          You have {totalItems} items on your list, and you already packed{" "}
+          {packed}({percent}%)
+        </p>
+      )}
+    </footer>
   );
 }
